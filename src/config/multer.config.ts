@@ -5,6 +5,8 @@ import multer from "multer";
 const storage = new CloudinaryStorage({
   cloudinary : cloudinaryUpload,
   params : async (req, file) => {
+    // console.log("hi bro",req.body.data);
+    console.log("file",file);
     const originalName = file.originalname;
     const extension = originalName.split(".").pop()?.toLocaleLowerCase();
 

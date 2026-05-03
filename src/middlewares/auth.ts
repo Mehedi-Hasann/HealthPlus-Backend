@@ -1,61 +1,87 @@
-import { NextFunction, Request, Response } from "express"
-import {auth as betterAuth} from "../lib/auth";
-import { Role } from "../generated/enums";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { NextFunction, Request, Response } from "express";
+import status from "http-status";
+import { envVars } from "../config/env";
+import { prisma } from "../lib/prisma";
+import { CookieUtils } from "../utils/cookie";
+import { jwtUtils } from "../utils/jwt";
+import { Role, UserStatus } from "../generated/enums";
+import AppError from "../errorHelper/AppError";
 
 declare global {
   namespace Express {
     interface Request {
       user ?: {
         id : string;
-        name : string;
+        name ?: string;
         email : string;
         role : string;
-        emailVerified : boolean;
+        status ?: string;
+        emailVerified ?: boolean;
       }
     }
   }
 }
 
+export const auth = (...authRoles: Role[]) => async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        //Session Token Verification
+        // const sessionToken = CookieUtils.getCookie(req, "better-auth.session_token");
 
-export const auth = (...roles : any) => {
-  return async(req: Request, res: Response, next: NextFunction) => {
+        // if (!sessionToken) {
+        //     throw new Error('Unauthorized access! No session token provided.');
+        // }
 
-const session = await betterAuth.api.getSession({
-  headers: {
-    cookie: req.headers.cookie || ""
-  }
-});
- 
+        // if (sessionToken) {
+        //     const sessionExists = await prisma.session.findFirst({
+        //         where: {
+        //             token: sessionToken,
+        //             expiresAt: {
+        //                 gt: new Date(),
+        //             }
+        //         },
+        //         include: {
+        //             user: true,
+        //         }
+        //     })
 
-    if(!session){
-      return res.status(401).json({
-        success : false,
-        message : `You are not Authorized!!`
-      })
+        //     const accessToken = CookieUtils.getCookie(req, 'accessToken');
+
+        //     if (!accessToken) {
+        //         throw new AppError(status.UNAUTHORIZED, 'Unauthorized access! No access token provided.');
+        //     }
+
+
+        // }
+
+        //Access Token Verification
+
+        const accessToken = CookieUtils.getCookie(req, 'accessToken');
+        // console.log("accessToken is => ",accessToken);
+
+        if (!accessToken) {
+            throw new AppError(status.UNAUTHORIZED, 'Unauthorized access! No access token provided.');
+        }
+
+        const verifiedToken = jwtUtils.verifyToken(accessToken, envVars.ACCESS_TOKEN_SECRET);
+
+        if (!verifiedToken.success) {
+            throw new AppError(status.UNAUTHORIZED, 'Unauthorized access! Invalid access token.');
+        }
+        // console.log(verifiedToken.data?.userId);
+                req.user = {
+                    id : verifiedToken.data?.userId,
+                    role : verifiedToken.data?.role,
+                    email : verifiedToken.data?.email,
+                }
+                // console.log(req.user)
+
+        if (authRoles.length > 0 && !authRoles.includes(verifiedToken.data!.role as Role)) {
+            throw new AppError(status.FORBIDDEN, 'Forbidden access! You do not have permission to access this resource.');
+        }
+
+        next()
+    } catch (error: any) {
+        next(error);
     }
-
-    if(!session.user.emailVerified){
-      return res.status(403).json({
-        success : false,
-        message : "Your Email is not Verified. Please Verify your email."
-      })
-    }
-    req.user = {
-      id : session.user.id,
-      name : session.user.name,
-      email : session.user.email,
-      role : session.user.role as string,
-      emailVerified : session.user.emailVerified
-    }
-    // console.log(req.user)
-
-    if(roles.length && !roles.includes(req.user.role as Role)){
-      return res.status(403).json({
-        success : false,
-        message : "Forbidden. You don't have permission to this resources."
-      })
-    }
-
-    next()
-  }
-}
+};

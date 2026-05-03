@@ -13,6 +13,8 @@ const getMyProfile = catchAsync(
       })
     }
     const {id} = req.user;
+    console.log("From customer controller ",req.user);
+    console.log(id);
     const result = await customerService.getMyProfile(id);
     sendResponse(res, {
       httpStatusCode : status.OK,
@@ -33,6 +35,7 @@ const getMyOrder = catchAsync(
     }
     const {id} = req.user;
     const result = await customerService.getMyOrder(id);
+    console.log(result);
     sendResponse(res, {
       httpStatusCode : status.OK,
       success : true,
@@ -140,6 +143,7 @@ const DecrementCartItem = catchAsync(
 
 const getMyCartItem = catchAsync(
   async(req: Request, res: Response) => {
+    console.log(req.user)
     if(!req.user){
       return res.status(404).json({
         success : false,
@@ -148,6 +152,7 @@ const getMyCartItem = catchAsync(
     }
     const userId = req.user.id;
     const result = await customerService.getMyCartItem(userId);
+    console.log(result);
     sendResponse(res, {
       httpStatusCode : status.OK,
       success : true,

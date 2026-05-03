@@ -1,23 +1,22 @@
 import { prisma } from "../../lib/prisma";
 import { Medicine, Order } from "../../generated/client";
+import { ICreateMedicine } from "./seller.medicine";
 
-const createMedicine = async(payload : Medicine) => {
-  // console.log(payload);
-  // if(!payload.categoryId){
-  //   throw new Error("You must Provide Category Id")
-  // }
+const createMedicine = async(payload : ICreateMedicine) => {
+  console.log(payload)
+
   const category = await prisma.category.findUniqueOrThrow({
     where : {
       categoryName : payload.categoryName
     }
   })
+  
   const result = await prisma.medicine.create({
     data : {
       ...payload,
       categoryId : category.id
     }
   })
-  // console.log(result);
   return result;
 }
 

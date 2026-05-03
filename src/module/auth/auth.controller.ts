@@ -14,8 +14,6 @@ const registerCustomer = catchAsync(
       image : req.file?.path
     };
 
-    console.log(payload)
-
     const result = await AuthService.registerCustomer(payload);
 
     const {accessToken, refreshToken, token, ...rest} = result;
@@ -38,6 +36,7 @@ const loginUser = catchAsync(
   async (req: Request, res: Response) => {
 
     const payload = req.body;
+    // console.log(payload);
 
     const result = await AuthService.loginUser(payload);
 

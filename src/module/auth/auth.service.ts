@@ -88,7 +88,9 @@ const registerCustomer = async (payload : IRegisterCustomerPayload) => {
 }
 
 const loginUser = async (payload : ILoginUserPayload) => {
-  const {email , password} = payload;
+  // console.log(payload);
+  const email = payload.email;
+  const password = payload.password;
 
   if(!email || !password){
     throw new Error("All fields are required");

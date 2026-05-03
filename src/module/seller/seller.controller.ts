@@ -9,7 +9,17 @@ import status from "http-status";
 const createMedicine = catchAsync(async(req: Request, res : Response) => {
   try {
 
-    const result = await sellerServices.createMedicine(req.body);
+    if(req.body.data){
+      req.body = JSON.parse(req.body.data);
+    }
+    const payload = {
+      ...req.body,
+      image : req.file?.path
+    }
+    // console.log(payload);
+
+    const result = await sellerServices.createMedicine(payload);
+    // console.log(result);
 
     sendResponse(res, {
       httpStatusCode : status.OK,
@@ -18,6 +28,7 @@ const createMedicine = catchAsync(async(req: Request, res : Response) => {
       data : result
     })
   } catch (error : any) {
+    // console.log(error);
     sendResponse(res, {
       httpStatusCode : status.BAD_REQUEST,
       success : false,

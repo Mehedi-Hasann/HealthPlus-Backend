@@ -14,27 +14,34 @@ import { globalErrorHandler } from "./middlewares/globalErrorHandler";
 import { notFoundHandler } from "./middlewares/notFound";
 import { toNodeHandler } from "better-auth/node";
 import { auth } from "./lib/auth";
+import { AuthRoutes } from "./module/auth/auth.route";
+import { multerUpload } from "./config/multer.config";
 
 const app : Application= express();
 
 
-app.use(cookieParser());
+
 
 app.use(cors({
   origin : envVars.APP_URL || "http://localhost:3000",
   credentials : true
 }))
 
-app.use(express.urlencoded({ extended: true }));
 
 
 
-app.all('/api/auth/*splat', toNodeHandler(auth));
+
+
 
 app.post("/webhook", express.raw({ type: "application/json" }), PaymentController.handleStripeWebhookEvent)
 
+app.all('/api/auth/*splat',multerUpload.single("file"),toNodeHandler(auth));
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 app.use(express.json());
+app.use(express.urlencoded({extended : true}))
 app.use("/api/payment", paymentRoute);
+app.use("/auth",AuthRoutes)
 
 //! customer
 app.use("/api/customer",customerRouter);

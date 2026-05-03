@@ -3,6 +3,7 @@ model Medicine {
   name         String   @unique
   price        Int
   stock        Int
+  image        String?
   categoryId   String
   category     Category @relation(fields: [categoryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   categoryName String

@@ -7,7 +7,9 @@ import status from "http-status";
 
 const createOrder = catchAsync(
   async(req: Request, res: Response) => {
+    // console.log(req.user);
     const result = await orderService.createOrder(req.body as Order, req.user?.id as string);
+    console.log("result after order",result);
     sendResponse(res, {
       httpStatusCode : status.CREATED,
       success : true,

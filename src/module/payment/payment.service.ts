@@ -4,15 +4,15 @@ import { prisma } from "../../lib/prisma";
 import { PaymentStatus, OrderStatus } from "../../generated/client";
 
 const handlerStripeWebhookEvent = async (userId: string,event: Stripe.Event) => {
-  const existingPayment = await prisma.payment.findFirst({
-    where : {
-      stripeEventId : event.id
-    }
-  })
+    const existingPayment = await prisma.payment.findFirst({
+        where : {
+            stripeEventId : event.id
+        }
+    })
 
-  if(existingPayment){
-    return { message: `Event ${event.id} already processed`};
-  }
+    if(existingPayment){
+        return { message: `Event ${event.id} already processed`};
+    }
 
     switch (event.type) {
         case "checkout.session.completed": {
@@ -27,9 +27,9 @@ const handlerStripeWebhookEvent = async (userId: string,event: Stripe.Event) => 
             }
 
             const order = await prisma.order.findUnique({
-              where : {
-                id : orderId
-              }
+                where : {
+                    id : orderId
+                }
             })
 
             if (!order) {
