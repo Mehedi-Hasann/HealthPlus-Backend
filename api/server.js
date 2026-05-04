@@ -201,7 +201,7 @@ var getAllMedicine = async ({ search, price, category, page, limit, sortBy, sort
   }
   if (priceNum) {
     andConditions.push({
-      price: priceNum
+      price: { lte: priceNum }
     });
   }
   if (category) {
@@ -614,7 +614,7 @@ var createMedicine2 = catchAsync(async (req, res) => {
     categoryName,
     price,
     stock,
-    image: req.file?.path
+    image: req.file?.path || null
   };
   console.log(payload);
   const result = await sellerServices.createMedicine(payload);
@@ -1900,8 +1900,8 @@ var sendEmail = async ({ subject, templateData, templateName, to, attachments })
 // src/lib/auth.ts
 var transporter2 = nodemailer2.createTransport({
   host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
+  port: 465,
+  secure: true,
   family: 4,
   auth: {
     user: envVars.APP_USER,
@@ -1913,7 +1913,7 @@ var auth2 = betterAuth({
     provider: "postgresql"
   }),
   trustedOrigins: [
-    "http://localhost:3000",
+    envVars.FRONTEND_URL,
     envVars.APP_URL
   ],
   user: {
@@ -2146,6 +2146,7 @@ var registerCustomer = async (payload) => {
       image
     }
   });
+  console.log(data);
   if (!data.user) {
     throw new Error("Failed to create user");
   }
@@ -2455,7 +2456,7 @@ var AuthRoutes = router7;
 // src/app.ts
 var app = express7();
 app.use(cors({
-  origin: envVars.APP_URL || "http://localhost:3000",
+  origin: envVars.APP_URL || envVars.FRONTEND_URL,
   credentials: true
 }));
 app.post("/webhook", express7.raw({ type: "application/json" }), PaymentController.handleStripeWebhookEvent);
