@@ -40,7 +40,7 @@ const getAllMedicine = async({search, price, category, page, limit, sortBy, sort
 
   if(priceNum){
     andConditions.push({
-      price : priceNum
+      price : { lte: priceNum }
     })
   }
 

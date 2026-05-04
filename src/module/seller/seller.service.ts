@@ -10,6 +10,7 @@ const createMedicine = async(payload : ICreateMedicine) => {
       categoryName : payload.categoryName
     }
   })
+  console.log(category);
   
   const result = await prisma.medicine.create({
     data : {
@@ -17,6 +18,7 @@ const createMedicine = async(payload : ICreateMedicine) => {
       categoryId : category.id
     }
   })
+  console.log("result is => ",result);
   return result;
 }
 
