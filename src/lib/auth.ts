@@ -12,8 +12,8 @@ import SMTPTransport from "nodemailer/lib/smtp-transport";
 
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
+  port: 465,
+  secure: true,
   family : 4,
   auth: {
     user: envVars.APP_USER,
@@ -26,7 +26,7 @@ export const auth = betterAuth({
         provider: "postgresql",
     }),
     trustedOrigins : [
-      "http://localhost:3000",
+      envVars.FRONTEND_URL,
       envVars.APP_URL],
     user : {
       additionalFields : {

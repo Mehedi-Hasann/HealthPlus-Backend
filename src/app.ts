@@ -23,7 +23,7 @@ const app : Application= express();
 
 
 app.use(cors({
-  origin : envVars.APP_URL || "http://localhost:3000",
+  origin : envVars.APP_URL || envVars.FRONTEND_URL,
   credentials : true
 }))
 

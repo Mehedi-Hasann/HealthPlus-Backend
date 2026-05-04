@@ -22,7 +22,7 @@ const registerCustomer = async (payload : IRegisterCustomerPayload) => {
       image
     }
   })
-  // console.log(data);
+  console.log(data);
 
   if(!data.user){
     throw new Error("Failed to create user");

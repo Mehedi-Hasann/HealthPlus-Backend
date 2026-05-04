@@ -31,7 +31,7 @@ export async function seedAdmin() {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Origin": "http:localhost:3000"
+                "Origin": envVars.FRONTEND_URL,
             },
             body: JSON.stringify(adminData)
     })
