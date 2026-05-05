@@ -13,6 +13,7 @@ const getMyProfile = async (id : string) => {
     },
     select : {
       id : true,
+      role : true,
       name : true,
       email : true,
       image : true
