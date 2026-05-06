@@ -50,16 +50,15 @@ const registerCustomer = async (payload : IRegisterCustomerPayload) => {
     needPasswordChange : data.user.needPasswordChange
   })
 
-    try {
-        const customer = await prisma.$transaction( async(tx) => {
-            const customerTx = await tx.customer.create({
+  const customerTx = await prisma.customer.create({
               data : {
                 userId : data.user.id,
                 name : data.user.name,
                 email : data.user.email
               }
             });
-              await prisma.user.update({
+  
+  await prisma.user.update({
                   where : {
                     id : customerTx.userId,
                     role : Role.CUSTOMER
@@ -68,17 +67,22 @@ const registerCustomer = async (payload : IRegisterCustomerPayload) => {
                     emailVerified : true
                   }
               });
-            return customerTx;
-        });
-    }catch (error) {
-      console.log("Transaction Error : ", error);
-      await prisma.user.delete({
-        where : {
-          id : data.user.id
-        }
-      });
-      throw error;
-    }
+
+    // try {
+    //     const customer = await prisma.$transaction( async(tx) => {
+            
+              
+    //         return customerTx;
+    //     });
+    // }catch (error) {
+    //   console.log("Transaction Error : ", error);
+    //   await prisma.user.delete({
+    //     where : {
+    //       id : data.user.id
+    //     }
+    //   });
+    //   throw error;
+    // }
 
   return {
     ...data,

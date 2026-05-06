@@ -16,8 +16,8 @@ import { fileURLToPath } from "url";
 import * as runtime from "@prisma/client/runtime/client";
 var config = {
   "previewFeatures": [],
-  "clientVersion": "7.7.0",
-  "engineVersion": "75cbdc1eb7150937890ad5465d861175c6624711",
+  "clientVersion": "7.8.0",
+  "engineVersion": "3c6e192761c0362d496ed980de936e2f3cebcd3a",
   "activeProvider": "postgresql",
   "inlineSchema": 'model Address {\n  id String @id @default(uuid())\n\n  fullName   String\n  phone      String\n  city       String\n  area       String?\n  street     String?\n  houseNo    String?\n  postalCode String?\n\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  userId String @unique\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)\n\n  orders Order[]\n\n  @@unique([id, userId])\n  @@map("address")\n}\n\nmodel Admin {\n  id            String    @id @default(uuid(7))\n  name          String\n  email         String    @unique\n  profilePhoto  String?\n  contactNumber String?\n  isDeleted     Boolean   @default(false)\n  deletedAt     DateTime?\n  createdAt     DateTime  @default(now())\n  updatedAt     DateTime  @updatedAt\n\n  userId String @unique\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)\n\n  @@index([email])\n  @@index([isDeleted])\n  @@map("admins")\n}\n\nmodel User {\n  id                 String    @id\n  name               String\n  email              String\n  emailVerified      Boolean   @default(false)\n  needPasswordChange Boolean   @default(false)\n  isDeleted          Boolean   @default(false)\n  deletedAt          DateTime?\n  image              String?\n  createdAt          DateTime  @default(now())\n  updatedAt          DateTime  @updatedAt\n  sessions           Session[]\n  accounts           Account[]\n  cart               Cart[]\n  address            Address?\n\n  role       Role?       @default(CUSTOMER)\n  userStatus UserStatus? @default(ACTIVE)\n\n  payments Payment[]\n  customer Customer?\n  seller   Seller?\n  admin    Admin?\n\n  @@unique([email])\n  @@map("user")\n}\n\nmodel Session {\n  id        String   @id\n  expiresAt DateTime\n  token     String\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n  ipAddress String?\n  userAgent String?\n  userId    String\n  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)\n\n  @@unique([token])\n  @@index([userId])\n  @@map("session")\n}\n\nmodel Account {\n  id                    String    @id\n  accountId             String\n  providerId            String\n  userId                String\n  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)\n  accessToken           String?\n  refreshToken          String?\n  idToken               String?\n  accessTokenExpiresAt  DateTime?\n  refreshTokenExpiresAt DateTime?\n  scope                 String?\n  password              String?\n  createdAt             DateTime  @default(now())\n  updatedAt             DateTime  @updatedAt\n\n  @@index([userId])\n  @@map("account")\n}\n\nmodel Verification {\n  id         String   @id\n  identifier String\n  value      String\n  expiresAt  DateTime\n  createdAt  DateTime @default(now())\n  updatedAt  DateTime @updatedAt\n\n  @@index([identifier])\n  @@map("verification")\n}\n\nmodel Cart {\n  id     String @id @default(uuid())\n  userId String\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)\n\n  medicineId String\n  medicine   Medicine @relation(fields: [medicineId], references: [id], onDelete: Cascade, onUpdate: Cascade)\n\n  quantity  Int      @default(1)\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  @@unique([userId, medicineId])\n  @@map("carts")\n}\n\nmodel Category {\n  id           String     @id @default(uuid())\n  medicines    Medicine[]\n  categoryName String     @unique\n  description  String?\n\n  @@map("categories")\n}\n\nmodel Customer {\n  id String @id @default(uuid(7))\n\n  name          String\n  email         String    @unique\n  profilePhoto  String?\n  contactNumber String?\n  address       String?\n  isDeleted     Boolean   @default(false)\n  deletedAt     DateTime?\n  createdAt     DateTime  @default(now())\n  updatedAt     DateTime  @updatedAt\n\n  //relations\n\n  userId String @unique\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)\n\n  @@index([email], name: "idx_customer_email")\n  @@index([isDeleted], name: "idx_customer_isDeleted")\n  @@map("customer")\n}\n\nenum Rating {\n  ONE\n  TWO\n  THREE\n  FOUR\n  FIVE\n}\n\nenum UserStatus {\n  ACTIVE\n  DELETED\n  BLOCKED\n}\n\nenum OrderStatus {\n  PENDING\n  CONFIRMED\n  SHIPPED\n  DELIVERED\n  CANCELLED\n}\n\nenum Role {\n  CUSTOMER\n  SELLER\n  ADMIN\n}\n\nenum PaymentStatus {\n  PAID\n  UNPAID\n  CANCELLED\n}\n\nmodel Medicine {\n  id           String   @id @default(uuid())\n  name         String   @unique\n  price        Int\n  stock        Int\n  image        String?\n  categoryId   String\n  category     Category @relation(fields: [categoryId], references: [id], onDelete: Cascade, onUpdate: Cascade)\n  categoryName String\n  orders       Order[]\n  reviews      Review[]\n  cart         Cart[]\n\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  @@map("medicines")\n}\n\nmodel Order {\n  id          String @id @default(uuid())\n  totalAmount Int\n  quantity    Int\n  userId      String\n\n  medicineId String\n  medicine   Medicine @relation(fields: [medicineId], references: [id], onDelete: Cascade, onUpdate: Cascade)\n\n  addressId String\n  address   Address @relation(fields: [addressId], references: [id], onDelete: Cascade, onUpdate: Cascade)\n\n  orderStatus   OrderStatus   @default(PENDING)\n  paymentStatus PaymentStatus @default(UNPAID)\n  createdAt     DateTime      @default(now())\n\n  payment Payment?\n\n  @@map("orders")\n}\n\nmodel Payment {\n  id            String        @id @default(uuid(7))\n  amount        Float\n  transactionId String        @unique @db.Uuid()\n  stripeEventId String?       @unique\n  status        PaymentStatus @default(UNPAID)\n\n  orderId String @unique\n  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade)\n  userId  String\n  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)\n\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  @@index([transactionId])\n  @@map("payments")\n}\n\nmodel Review {\n  id          String   @id @default(uuid())\n  userId      String\n  medicineId  String\n  medicine    Medicine @relation(fields: [medicineId], references: [id], onDelete: Cascade, onUpdate: Cascade)\n  rating      Rating?\n  description String\n\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  @@map("reviews")\n}\n\ngenerator client {\n  provider = "prisma-client"\n  output   = "../../src/generated"\n}\n\ndatasource db {\n  provider = "postgresql"\n}\n\nmodel Seller {\n  id String @id @default(uuid(7))\n\n  name          String\n  email         String    @unique\n  profilePhoto  String?\n  contactNumber String?\n  address       String?\n  isDeleted     Boolean   @default(false)\n  deletedAt     DateTime?\n  createdAt     DateTime  @default(now())\n  updatedAt     DateTime  @updatedAt\n\n  //relations\n\n  userId String @unique\n  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)\n\n  @@index([email], name: "idx_seller_email")\n  @@index([isDeleted], name: "idx_seller_isDeleted")\n  @@map("seller")\n}\n',
   "runtimeDataModel": {
@@ -284,14 +284,15 @@ var getAllMedicine2 = catchAsync(
   async (req, res) => {
     const { search } = req.query;
     const searchString = typeof search === "string" ? search : void 0;
+    const { sortBetweenPrice } = req.query;
     const { price } = req.query;
     const priceString = typeof price === "string" ? price : void 0;
     const { category } = req.query;
     const categoryString = typeof category === "string" ? category : void 0;
     const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit) || 6;
+    const limit = Number(req.query.limit) || 8;
     const sortBy = req.query.sortBy ?? "price";
-    const sortOrder = req.query.sortOrder ?? "asc";
+    const sortOrder = req.query.sortBetweenPrice ?? "asc";
     const result = await medicineService.getAllMedicine({ search: searchString, price: priceString, category: categoryString, page, limit, sortBy, sortOrder });
     sendResponse(res, {
       httpStatusCode: status.OK,
@@ -1051,6 +1052,7 @@ var getMyProfile = async (id) => {
     },
     select: {
       id: true,
+      role: true,
       name: true,
       email: true,
       image: true
@@ -1085,7 +1087,8 @@ var getMyOrder = async (id) => {
         select: {
           name: true,
           price: true,
-          categoryName: true
+          categoryName: true,
+          image: true
         }
       }
     }
@@ -1299,6 +1302,7 @@ var getMyProfile2 = catchAsync(
     console.log("From customer controller ", req.user);
     console.log(id);
     const result = await customerService.getMyProfile(id);
+    console.log("My prof", result);
     sendResponse(res, {
       httpStatusCode: status7.OK,
       success: true,
@@ -1616,20 +1620,20 @@ var createReviewZodSchema = z3.object({
 var router5 = express6.Router();
 router5.get("/me", auth(Role.CUSTOMER, Role.ADMIN, Role.SELLER), customerController.getMyProfile);
 router5.get("/orders", auth(Role.CUSTOMER), customerController.getMyOrder);
-router5.get("/orders/:id", auth(Role.CUSTOMER), customerController.getSingleOrder);
+router5.get("/orders/:id", auth(Role.CUSTOMER, Role.ADMIN, Role.SELLER), customerController.getSingleOrder);
 router5.post("/cart", auth(Role.CUSTOMER), customerController.AddItemToCard);
 router5.post("/decrement", auth(Role.CUSTOMER), customerController.DecrementCartItem);
 router5.get("/cart", auth(Role.CUSTOMER), customerController.getMyCartItem);
 router5.get("/cart/:id", auth(Role.CUSTOMER), customerController.getMySingleCartItem);
-router5.put("/profile", auth(Role.CUSTOMER), customerController.editMyProfile);
+router5.put("/profile", auth(Role.CUSTOMER, Role.ADMIN, Role.SELLER), customerController.editMyProfile);
 router5.put("/checkout", auth(Role.CUSTOMER), customerController.addShippingAddress);
 router5.delete("/:id", auth(Role.CUSTOMER), customerController.deleteCartItem);
-router5.post("/address", validateRequest(createAddressZodSchema), auth(Role.CUSTOMER), customerController.createAddress);
-router5.put("/update-my-address", auth(Role.CUSTOMER), customerController.updateAddress);
+router5.post("/address", validateRequest(createAddressZodSchema), auth(Role.CUSTOMER, Role.ADMIN, Role.SELLER), customerController.createAddress);
+router5.put("/update-my-address", auth(Role.CUSTOMER, Role.SELLER, Role.ADMIN), customerController.updateAddress);
 router5.post("/review", auth(Role.CUSTOMER), validateRequest(createReviewZodSchema), customerController.createReview);
 router5.get("/review", auth(Role.CUSTOMER, Role.ADMIN, Role.SELLER), customerController.getReview);
 router5.get("/review/:medicineId", auth(Role.CUSTOMER, Role.ADMIN, Role.SELLER), customerController.getSingleMedicineReview);
-router5.get("/my-address", auth(Role.CUSTOMER), customerController.getMyAddress);
+router5.get("/my-address", auth(Role.CUSTOMER, Role.ADMIN, Role.SELLER), customerController.getMyAddress);
 var customerRouter = router5;
 
 // src/app.ts
@@ -1900,8 +1904,8 @@ var sendEmail = async ({ subject, templateData, templateName, to, attachments })
 // src/lib/auth.ts
 var transporter2 = nodemailer2.createTransport({
   host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
+  port: 587,
+  secure: false,
   family: 4,
   auth: {
     user: envVars.APP_USER,
