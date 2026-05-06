@@ -27,6 +27,7 @@ const getAllOrder = catchAsync(
     const limit = Number(req.query.limit) || 5;
 
     const result = await orderService.getAllOrder(id as string, page, limit);
+    // console.log('All order is => ',result);
     sendResponse(res, {
       httpStatusCode : status.OK,
       success : true,
@@ -40,6 +41,7 @@ const getSingleOrder = catchAsync(
   async(req: Request, res: Response) => {
     const id = req.params.id;
     const result = await orderService.getSingleOrder(id as string);
+    // console.log('hi => ',result);
     sendResponse(res, {
       httpStatusCode : status.OK,
       success : true,

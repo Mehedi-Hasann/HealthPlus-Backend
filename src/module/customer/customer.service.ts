@@ -53,6 +53,7 @@ const getMyOrder = async (id : string) => {
           name : true,
           price : true,
           categoryName : true,
+          image : true,
         }
       }
     },
