@@ -14,7 +14,7 @@ const getAllUser = async(page : number, limit: number) => {
   return {data,page, limit, totalUser, totalPage : Math.ceil(totalUser/limit)};
 }
 
-const updateUserStatus = async(payload : Pick<User, "userStatus">,id : string) => {
+const updateUserStatus = async(payload : Pick<User, "userStatus" | "emailVerified">,id : string) => {
 
   console.log(payload)
 
@@ -29,7 +29,8 @@ const updateUserStatus = async(payload : Pick<User, "userStatus">,id : string) =
       id
     },
     data : {
-      userStatus : payload.userStatus
+      userStatus : payload.userStatus,
+      emailVerified : payload.emailVerified
     }
   })
 
