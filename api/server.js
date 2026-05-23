@@ -958,7 +958,8 @@ var updateUserStatus = async (payload, id) => {
       id
     },
     data: {
-      userStatus: payload.userStatus
+      userStatus: payload.userStatus,
+      emailVerified: payload.emailVerified
     }
   });
   return result;
@@ -2174,35 +2175,22 @@ var registerCustomer = async (payload) => {
     isDeleted: data.user.isDeleted,
     needPasswordChange: data.user.needPasswordChange
   });
-  try {
-    const customer = await prisma.$transaction(async (tx) => {
-      const customerTx = await tx.customer.create({
-        data: {
-          userId: data.user.id,
-          name: data.user.name,
-          email: data.user.email
-        }
-      });
-      await prisma.user.update({
-        where: {
-          id: customerTx.userId,
-          role: Role.CUSTOMER
-        },
-        data: {
-          emailVerified: true
-        }
-      });
-      return customerTx;
-    });
-  } catch (error) {
-    console.log("Transaction Error : ", error);
-    await prisma.user.delete({
-      where: {
-        id: data.user.id
-      }
-    });
-    throw error;
-  }
+  const customerTx = await prisma.customer.create({
+    data: {
+      userId: data.user.id,
+      name: data.user.name,
+      email: data.user.email
+    }
+  });
+  await prisma.user.update({
+    where: {
+      id: customerTx.userId,
+      role: Role.CUSTOMER
+    },
+    data: {
+      emailVerified: true
+    }
+  });
   return {
     ...data,
     accessToken,
@@ -2460,7 +2448,7 @@ var AuthRoutes = router7;
 // src/app.ts
 var app = express7();
 app.use(cors({
-  origin: envVars.APP_URL || envVars.FRONTEND_URL,
+  origin: [envVars.APP_URL, envVars.FRONTEND_URL],
   credentials: true
 }));
 app.post("/webhook", express7.raw({ type: "application/json" }), PaymentController.handleStripeWebhookEvent);

@@ -1,0 +1,82 @@
+services:
+  - type: web
+    name: medistore-backend
+    runtime: node
+    buildCommand: pnpm install && pnpm run build
+    startCommand: pnpm run db:migrate && pnpm start
+    plan: free # Use free tier for the web service
+    envVars:
+      # Database connection URL, automatically linked from the DB service below
+      - key: DATABASE_URL
+        fromDatabase:
+          name: medistore-db
+          property: connectionString
+
+      # Environment configuration
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+
+      # JWT & Session Configurations (Default values)
+      - key: ACCESS_TOKEN_EXPIRES_IN
+        value: 10d
+      - key: REFRESH_TOKEN_EXPIRES_IN
+        value: 20d
+      - key: BETTER_AUTH_SESSION_TOKEN_EXPIRES_IN
+        value: 10d
+
+      # Email SMTP Server Config (Default values)
+      - key: EMAIL_SENDER_SMTP_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_SENDER_SMTP_PORT
+        value: 465
+
+      # Secrets - Render will auto-generate random 256-bit keys for these on creation
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      - key: ACCESS_TOKEN_SECRET
+        generateValue: true
+      - key: REFRESH_TOKEN_SECRET
+        generateValue: true
+
+      # Prompting variables - Render will prompt you for these during deployment
+      - key: BETTER_AUTH_URL
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: EMAIL_SENDER_SMTP_USER
+        sync: false
+      - key: EMAIL_SENDER_SMTP_PASS
+        sync: false
+      - key: EMAIL_SENDER_SMTP_FROM
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: APP_USER
+        sync: false
+
+# Define the PostgreSQL database service
+databases:
+  - name: medistore-db
+    databaseName: medistore
+    user: medistore
+    plan: free # Free tier database (expires after 90 days)
