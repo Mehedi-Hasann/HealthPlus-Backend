@@ -12,7 +12,7 @@ const transporter = nodemailer.createTransport({
     user : envVars.EMAIL_SENDER.SMTP_USER,
     pass : envVars.EMAIL_SENDER.SMTP_PASS
   },
-  port : Number(envVars.EMAIL_SENDER.SMTP_PASS)
+  port : Number(envVars.EMAIL_SENDER.SMTP_PORT)
 })
 
 interface SendEMailOptions {
@@ -45,6 +45,10 @@ export const sendEmail = async({subject, templateData,templateName,to,attachment
     })
   } catch (error : any) {
     console.log("Email Sending Error", error.message);
+    if (envVars.NODE_ENV === 'development') {
+      console.log(`[Development Mode] Bypassing email send error. Email details: to=${to}, subject=${subject}`);
+      return;
+    }
     throw new AppError(status.INTERNAL_SERVER_ERROR, "Failed to send Email")
   }
 }

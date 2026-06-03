@@ -11,12 +11,12 @@ import { sendEmail } from "../utils/email";
 import SMTPTransport from "nodemailer/lib/smtp-transport";
 
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  family : 4,
+  host: envVars.EMAIL_SENDER.SMTP_HOST,
+  port: Number(envVars.EMAIL_SENDER.SMTP_PORT),
+  secure: Number(envVars.EMAIL_SENDER.SMTP_PORT) === 465,
+  family: 4,
   auth: {
-    user: envVars.APP_USER,
+    user: envVars.EMAIL_SENDER.SMTP_USER,
     pass: envVars.EMAIL_SENDER.SMTP_PASS,
   }
 } as SMTPTransport.Options);
@@ -76,15 +76,22 @@ export const auth = betterAuth({
             })
 
           if(user && !user.emailVerified){
-            sendEmail({
-              to: email,
-              subject : "Verify your Email",
-              templateName : "otp",
-              templateData : {
-                name : user.name,
-                otp
-              }
-            })
+            console.log("-----------------------------------------");
+            console.log(`[Better Auth OTP] Verification OTP for ${email}: ${otp}`);
+            console.log("-----------------------------------------");
+            try {
+              await sendEmail({
+                to: email,
+                subject : "Verify your Email",
+                templateName : "otp",
+                templateData : {
+                  name : user.name,
+                  otp
+                }
+              })
+            } catch (error) {
+              console.error("An Error Occur to send Verification OTP (bypassed):", error);
+            }
           }
           }
         },
@@ -98,9 +105,12 @@ export const auth = betterAuth({
         sendOnSignIn : true,
         autoSignInAfterVerification : true,
         sendVerificationEmail: async ( { user, url, token }, request) => {
+          const verificationUrl = `${envVars.APP_URL}/verify-email?token=${token}`;
+          console.log("-----------------------------------------");
+          console.log(`[Better Auth Link] Verification URL for ${user.email}:`);
+          console.log(verificationUrl);
+          console.log("-----------------------------------------");
           try {
-            const verificationUrl = `${envVars.APP_URL}/verify-email?token=${token}`;
-          
             const info = await transporter.sendMail({
                   from: '"fgg" <u1904067@student.cuet.ac.bd>',
                   to: user.email,
@@ -174,7 +184,11 @@ export const auth = betterAuth({
 
                   console.log("Message sent:", info.messageId);
             } catch (error) {
-              console.log("An Error Occur to send Email",error);
+              console.log("An Error Occur to send Email:", error);
+              if (envVars.NODE_ENV === 'development') {
+                console.log("[Development Mode] Bypassing email send error to avoid app crash/block.");
+                return;
+              }
               throw error;
             }
         },

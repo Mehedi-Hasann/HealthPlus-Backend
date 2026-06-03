@@ -28,11 +28,6 @@ app.use(cors({
 }))
 
 
-
-
-
-
-
 app.post("/webhook", express.raw({ type: "application/json" }), PaymentController.handleStripeWebhookEvent)
 
 app.all('/api/auth/*splat',multerUpload.single("file"),toNodeHandler(auth));
