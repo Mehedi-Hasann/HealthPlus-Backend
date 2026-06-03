@@ -79,19 +79,17 @@ export const auth = betterAuth({
             console.log("-----------------------------------------");
             console.log(`[Better Auth OTP] Verification OTP for ${email}: ${otp}`);
             console.log("-----------------------------------------");
-            try {
-              await sendEmail({
-                to: email,
-                subject : "Verify your Email",
-                templateName : "otp",
-                templateData : {
-                  name : user.name,
-                  otp
-                }
-              })
-            } catch (error) {
+            sendEmail({
+              to: email,
+              subject : "Verify your Email",
+              templateName : "otp",
+              templateData : {
+                name : user.name,
+                otp
+              }
+            }).catch((error) => {
               console.error("An Error Occur to send Verification OTP (bypassed):", error);
-            }
+            });
           }
           }
         },
@@ -110,13 +108,13 @@ export const auth = betterAuth({
           console.log(`[Better Auth Link] Verification URL for ${user.email}:`);
           console.log(verificationUrl);
           console.log("-----------------------------------------");
-          try {
-            const info = await transporter.sendMail({
-                  from: '"fgg" <u1904067@student.cuet.ac.bd>',
-                  to: user.email,
-                  subject: "Email verification for Medi Store",
-                  text: "Hello world?",
-                  html: `<!DOCTYPE html>
+          
+          transporter.sendMail({
+                from: '"fgg" <u1904067@student.cuet.ac.bd>',
+                to: user.email,
+                subject: "Email verification for Medi Store",
+                text: "Hello world?",
+                html: `<!DOCTYPE html>
       <html lang="en">
       <head>
         <meta charset="UTF-8" />
@@ -180,17 +178,16 @@ export const auth = betterAuth({
       </body>
       </html>
                         `,
-                  });
-
-                  console.log("Message sent:", info.messageId);
-            } catch (error) {
-              console.log("An Error Occur to send Email:", error);
-              if (envVars.NODE_ENV === 'development') {
-                console.log("[Development Mode] Bypassing email send error to avoid app crash/block.");
-                return;
-              }
-              throw error;
+          })
+          .then((info) => {
+            console.log("Message sent successfully:", info.messageId);
+          })
+          .catch((error) => {
+            console.log("An Error Occur to send Email:", error);
+            if (envVars.NODE_ENV !== 'development') {
+              console.error("[Production Mode] Email sending failed in background:", error);
             }
+          });
         },
     },
     socialProviders: {
