@@ -92,8 +92,13 @@ const changePassword = catchAsync(
 const logoutUser = catchAsync(
   async (req: Request, res: Response) => {
     const sessionToken = req.cookies['better-auth.session_token'] || req.cookies['__Secure-better-auth.session_token'];
+    console.log("Sing out is proccessing boss")
 
     const result = await AuthService.logoutUser(sessionToken);
+
+    tokenUtils.clearAccessTokenCookie(res);
+    tokenUtils.clearRefreshTokenCookie(res);
+    tokenUtils.clearBetterAuthSessionCookie(res);
 
     sendResponse(res, {
       httpStatusCode : status.OK,

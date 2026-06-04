@@ -202,12 +202,13 @@ const changePassword = async(payload : IChangePassword, sessionToken: string) =>
 }
 
 const logoutUser = async(sessionToken : string) => {
+  console.log("Hi I am from LogOut")
   const result = await auth.api.signOut({
     headers : new Headers({
       Authorization : `Bearer ${sessionToken}`
     })
   })
-
+console.log("Result From logout is ",result)
   return result
 }
 

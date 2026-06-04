@@ -26,13 +26,13 @@ declare global {
 export const auth = (...authRoles: Role[]) => async (req: Request, res: Response, next: NextFunction) => {
     try {
         // Session Token Verification
-        const sessionToken = CookieUtils.getCookie(req, "better-auth.session_token") || 
-                             CookieUtils.getCookie(req, "__Secure-better-auth.session_token");
+        const sessionToken = CookieUtils.getCookie(req, "better-auth.session_token") || CookieUtils.getCookie(req, "__Secure-better-auth.session_token");
 
+        console.log("SessionToken is => ",sessionToken)
         if (!sessionToken) {
             throw new AppError(status.UNAUTHORIZED, 'Unauthorized access! No session token provided.');
         }
-        console.log("session token is => ",sessionToken);
+        // console.log("session token is => ",sessionToken);
 
         const parsedSessionToken = sessionToken.split(".")[0] ?? "";
 
@@ -44,7 +44,7 @@ export const auth = (...authRoles: Role[]) => async (req: Request, res: Response
                 user: true,
             }
         });
-        console.log("Session is => ",sessionExists);
+        // console.log("Session is => ",sessionExists);
 
         if (!sessionExists) {
             throw new AppError(status.UNAUTHORIZED, 'Unauthorized access! Session has expired or is invalid.');

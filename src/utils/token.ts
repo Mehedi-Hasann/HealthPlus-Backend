@@ -50,12 +50,47 @@ const setBetterAuthSessionCookie = (res: Response, token: string) => {
       path : '/',
       maxAge : 60*60*24*1000*10
     })
-  }
+}
+const clearAccessTokenCookie = (res: Response) => {
+  CookieUtils.clearCookie(res, 'accessToken', {
+    httpOnly : true,
+    secure : true,
+    sameSite : "none",
+    path: '/'
+  })
+}
+
+const clearRefreshTokenCookie = (res: Response) => {
+  CookieUtils.clearCookie(res, 'refreshToken', {
+    httpOnly : true,
+    secure : true,
+    sameSite : "none",
+    path: '/'
+  })
+}
+
+const clearBetterAuthSessionCookie = (res: Response) => {
+  CookieUtils.clearCookie(res, 'better-auth.session_token', {
+    httpOnly : true,
+    secure : true,
+    sameSite : "none",
+    path: '/'
+  })
+  CookieUtils.clearCookie(res, '__Secure-better-auth.session_token', {
+    httpOnly : true,
+    secure : true,
+    sameSite : "none",
+    path: '/'
+  })
+}
 
 export const tokenUtils = {
   getAccessToken,
   getRefreshToken,
   setAccessTokenCookie,
   setRefreshTokenCookie,
-  setBetterAuthSessionCookie
+  setBetterAuthSessionCookie,
+  clearAccessTokenCookie,
+  clearRefreshTokenCookie,
+  clearBetterAuthSessionCookie
 }

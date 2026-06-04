@@ -462,10 +462,10 @@ var AppError_default = AppError;
 var auth = (...authRoles) => async (req, res, next) => {
   try {
     const sessionToken = CookieUtils.getCookie(req, "better-auth.session_token") || CookieUtils.getCookie(req, "__Secure-better-auth.session_token");
+    console.log("SessionToken is => ", sessionToken);
     if (!sessionToken) {
       throw new AppError_default(status3.UNAUTHORIZED, "Unauthorized access! No session token provided.");
     }
-    console.log("session token is => ", sessionToken);
     const parsedSessionToken = sessionToken.split(".")[0] ?? "";
     const sessionExists = await prisma.session.findFirst({
       where: {
@@ -475,7 +475,6 @@ var auth = (...authRoles) => async (req, res, next) => {
         user: true
       }
     });
-    console.log("Session is => ", sessionExists);
     if (!sessionExists) {
       throw new AppError_default(status3.UNAUTHORIZED, "Unauthorized access! Session has expired or is invalid.");
     }
@@ -1318,10 +1317,7 @@ var getMyProfile2 = catchAsync(
       });
     }
     const { id } = req.user;
-    console.log("From customer controller ", req.user);
-    console.log(id);
     const result = await customerService.getMyProfile(id);
-    console.log("My prof", result);
     sendResponse(res, {
       httpStatusCode: status7.OK,
       success: true,
@@ -2161,12 +2157,45 @@ var setBetterAuthSessionCookie = (res, token) => {
     maxAge: 60 * 60 * 24 * 1e3 * 10
   });
 };
+var clearAccessTokenCookie = (res) => {
+  CookieUtils.clearCookie(res, "accessToken", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    path: "/"
+  });
+};
+var clearRefreshTokenCookie = (res) => {
+  CookieUtils.clearCookie(res, "refreshToken", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    path: "/"
+  });
+};
+var clearBetterAuthSessionCookie = (res) => {
+  CookieUtils.clearCookie(res, "better-auth.session_token", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    path: "/"
+  });
+  CookieUtils.clearCookie(res, "__Secure-better-auth.session_token", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    path: "/"
+  });
+};
 var tokenUtils = {
   getAccessToken,
   getRefreshToken,
   setAccessTokenCookie,
   setRefreshTokenCookie,
-  setBetterAuthSessionCookie
+  setBetterAuthSessionCookie,
+  clearAccessTokenCookie,
+  clearRefreshTokenCookie,
+  clearBetterAuthSessionCookie
 };
 
 // src/module/auth/auth.service.ts
@@ -2337,11 +2366,13 @@ var changePassword = async (payload, sessionToken) => {
   };
 };
 var logoutUser = async (sessionToken) => {
+  console.log("Hi I am from LogOut");
   const result = await auth2.api.signOut({
     headers: new Headers({
       Authorization: `Bearer ${sessionToken}`
     })
   });
+  console.log("Result From logout is ", result);
   return result;
 };
 var verifyEmail = async (email, otp) => {
@@ -2525,7 +2556,11 @@ var changePassword2 = catchAsync(
 var logoutUser2 = catchAsync(
   async (req, res) => {
     const sessionToken = req.cookies["better-auth.session_token"] || req.cookies["__Secure-better-auth.session_token"];
+    console.log("Sing out is proccessing boss");
     const result = await AuthService.logoutUser(sessionToken);
+    tokenUtils.clearAccessTokenCookie(res);
+    tokenUtils.clearRefreshTokenCookie(res);
+    tokenUtils.clearBetterAuthSessionCookie(res);
     sendResponse(res, {
       httpStatusCode: status14.OK,
       success: true,

@@ -13,10 +13,8 @@ const getMyProfile = catchAsync(
       })
     }
     const {id} = req.user;
-    console.log("From customer controller ",req.user);
-    console.log(id);
     const result = await customerService.getMyProfile(id);
-    console.log("My prof",result);
+    
     sendResponse(res, {
       httpStatusCode : status.OK,
       success : true,
