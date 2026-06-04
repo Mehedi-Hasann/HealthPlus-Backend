@@ -18,4 +18,6 @@ router.post('/logout',auth(Role.ADMIN,Role.CUSTOMER,Role.SELLER),AuthController.
 
 router.post('/verify-email', AuthController.verifyEmail);
 
+router.post("/session-to-token", AuthController.sessionToToken);
+
 export const AuthRoutes: Router = router;

@@ -25,43 +25,39 @@ declare global {
 
 export const auth = (...authRoles: Role[]) => async (req: Request, res: Response, next: NextFunction) => {
     try {
-        //Session Token Verification
-        // const sessionToken = CookieUtils.getCookie(req, "better-auth.session_token");
+        // Session Token Verification
+        const sessionToken = CookieUtils.getCookie(req, "better-auth.session_token") || 
+                             CookieUtils.getCookie(req, "__Secure-better-auth.session_token");
 
-        // if (!sessionToken) {
-        //     throw new Error('Unauthorized access! No session token provided.');
-        // }
+        if (!sessionToken) {
+            throw new AppError(status.UNAUTHORIZED, 'Unauthorized access! No session token provided.');
+        }
+        console.log("session token is => ",sessionToken);
 
-        // if (sessionToken) {
-        //     const sessionExists = await prisma.session.findFirst({
-        //         where: {
-        //             token: sessionToken,
-        //             expiresAt: {
-        //                 gt: new Date(),
-        //             }
-        //         },
-        //         include: {
-        //             user: true,
-        //         }
-        //     })
+        const parsedSessionToken = sessionToken.split(".")[0] ?? "";
 
-        //     const accessToken = CookieUtils.getCookie(req, 'accessToken');
+        const sessionExists = await prisma.session.findFirst({
+            where: {
+                token: parsedSessionToken
+            },
+            include: {
+                user: true,
+            }
+        });
+        console.log("Session is => ",sessionExists);
 
-        //     if (!accessToken) {
-        //         throw new AppError(status.UNAUTHORIZED, 'Unauthorized access! No access token provided.');
-        //     }
-
-
-        // }
-
-        //Access Token Verification
+        if (!sessionExists) {
+            throw new AppError(status.UNAUTHORIZED, 'Unauthorized access! Session has expired or is invalid.');
+        }
 
         const accessToken = CookieUtils.getCookie(req, 'accessToken');
-        // console.log("accessToken is => ",accessToken);
 
         if (!accessToken) {
             throw new AppError(status.UNAUTHORIZED, 'Unauthorized access! No access token provided.');
         }
+
+        //Access Token Verification
+        // console.log("accessToken is => ",accessToken);
 
         const verifiedToken = jwtUtils.verifyToken(accessToken, envVars.ACCESS_TOKEN_SECRET);
 

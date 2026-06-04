@@ -12,3 +12,7 @@ node_modules
 
 .vercel
 .env*.local
+
+# Production env file
+env_backend_production.txt
+

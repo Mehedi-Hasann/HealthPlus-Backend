@@ -461,6 +461,24 @@ var AppError_default = AppError;
 // src/middlewares/auth.ts
 var auth = (...authRoles) => async (req, res, next) => {
   try {
+    const sessionToken = CookieUtils.getCookie(req, "better-auth.session_token") || CookieUtils.getCookie(req, "__Secure-better-auth.session_token");
+    if (!sessionToken) {
+      throw new AppError_default(status3.UNAUTHORIZED, "Unauthorized access! No session token provided.");
+    }
+    console.log("session token is => ", sessionToken);
+    const parsedSessionToken = sessionToken.split(".")[0] ?? "";
+    const sessionExists = await prisma.session.findFirst({
+      where: {
+        token: parsedSessionToken
+      },
+      include: {
+        user: true
+      }
+    });
+    console.log("Session is => ", sessionExists);
+    if (!sessionExists) {
+      throw new AppError_default(status3.UNAUTHORIZED, "Unauthorized access! Session has expired or is invalid.");
+    }
     const accessToken = CookieUtils.getCookie(req, "accessToken");
     if (!accessToken) {
       throw new AppError_default(status3.UNAUTHORIZED, "Unauthorized access! No access token provided.");
@@ -804,8 +822,8 @@ var createOrder = async (payload, userId) => {
         orderId: orderData.id,
         paymentId: paymentData.id
       },
-      success_url: `${envVars.FRONTEND_URL}/cart?success=true`,
-      cancel_url: `${envVars.FRONTEND_URL}/cart?success=false`
+      success_url: `${envVars.FRONTEND_URL}/customer/cart?success=true`,
+      cancel_url: `${envVars.FRONTEND_URL}/customer/cart?success=false`
     });
     return {
       orderData,
@@ -1879,7 +1897,7 @@ var transporter = nodemailer.createTransport({
     user: envVars.EMAIL_SENDER.SMTP_USER,
     pass: envVars.EMAIL_SENDER.SMTP_PASS
   },
-  port: Number(envVars.EMAIL_SENDER.SMTP_PASS)
+  port: Number(envVars.EMAIL_SENDER.SMTP_PORT)
 });
 var sendEmail = async ({ subject, templateData, templateName, to, attachments }) => {
   try {
@@ -1898,18 +1916,22 @@ var sendEmail = async ({ subject, templateData, templateName, to, attachments })
     });
   } catch (error) {
     console.log("Email Sending Error", error.message);
+    if (envVars.NODE_ENV === "development") {
+      console.log(`[Development Mode] Bypassing email send error. Email details: to=${to}, subject=${subject}`);
+      return;
+    }
     throw new AppError_default(status12.INTERNAL_SERVER_ERROR, "Failed to send Email");
   }
 };
 
 // src/lib/auth.ts
 var transporter2 = nodemailer2.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
+  host: envVars.EMAIL_SENDER.SMTP_HOST,
+  port: Number(envVars.EMAIL_SENDER.SMTP_PORT),
+  secure: Number(envVars.EMAIL_SENDER.SMTP_PORT) === 465,
   family: 4,
   auth: {
-    user: envVars.APP_USER,
+    user: envVars.EMAIL_SENDER.SMTP_USER,
     pass: envVars.EMAIL_SENDER.SMTP_PASS
   }
 });
@@ -1917,6 +1939,7 @@ var auth2 = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "postgresql"
   }),
+  trustedProxyHeaders: true,
   trustedOrigins: [
     envVars.FRONTEND_URL,
     envVars.APP_URL
@@ -1967,6 +1990,9 @@ var auth2 = betterAuth({
             }
           });
           if (user && !user.emailVerified) {
+            console.log("-----------------------------------------");
+            console.log(`[Better Auth OTP] Verification OTP for ${email}: ${otp}`);
+            console.log("-----------------------------------------");
             sendEmail({
               to: email,
               subject: "Verify your Email",
@@ -1975,6 +2001,8 @@ var auth2 = betterAuth({
                 name: user.name,
                 otp
               }
+            }).catch((error) => {
+              console.error("An Error Occur to send Verification OTP (bypassed):", error);
             });
           }
         }
@@ -1989,14 +2017,17 @@ var auth2 = betterAuth({
     sendOnSignIn: true,
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url, token }, request) => {
-      try {
-        const verificationUrl = `${envVars.APP_URL}/verify-email?token=${token}`;
-        const info = await transporter2.sendMail({
-          from: '"fgg" <u1904067@student.cuet.ac.bd>',
-          to: user.email,
-          subject: "Email verification for Medi Store",
-          text: "Hello world?",
-          html: `<!DOCTYPE html>
+      const verificationUrl = `${envVars.APP_URL}/verify-email?token=${token}`;
+      console.log("-----------------------------------------");
+      console.log(`[Better Auth Link] Verification URL for ${user.email}:`);
+      console.log(verificationUrl);
+      console.log("-----------------------------------------");
+      transporter2.sendMail({
+        from: '"fgg" <u1904067@student.cuet.ac.bd>',
+        to: user.email,
+        subject: "Email verification for Medi Store",
+        text: "Hello world?",
+        html: `<!DOCTYPE html>
       <html lang="en">
       <head>
         <meta charset="UTF-8" />
@@ -2060,12 +2091,14 @@ var auth2 = betterAuth({
       </body>
       </html>
                         `
-        });
-        console.log("Message sent:", info.messageId);
-      } catch (error) {
-        console.log("An Error Occur to send Email", error);
-        throw error;
-      }
+      }).then((info) => {
+        console.log("Message sent successfully:", info.messageId);
+      }).catch((error) => {
+        console.log("An Error Occur to send Email:", error);
+        if (envVars.NODE_ENV !== "development") {
+          console.error("[Production Mode] Email sending failed in background:", error);
+        }
+      });
     }
   },
   socialProviders: {
@@ -2191,8 +2224,14 @@ var registerCustomer = async (payload) => {
       emailVerified: true
     }
   });
+  const signInData = await auth2.api.signInEmail({
+    body: {
+      email,
+      password
+    }
+  });
   return {
-    ...data,
+    ...signInData,
     accessToken,
     refreshToken
   };
@@ -2323,12 +2362,100 @@ var verifyEmail = async (email, otp) => {
     });
   }
 };
+var sessionToToken = async (sessionToken) => {
+  if (!sessionToken) {
+    throw new AppError_default(status13.UNAUTHORIZED, "Session token is missing");
+  }
+  const parsedSessionToken = sessionToken.split(".")[0] ?? "";
+  const sessionExists = await prisma.session.findFirst({
+    where: {
+      token: parsedSessionToken,
+      expiresAt: {
+        gt: /* @__PURE__ */ new Date()
+      }
+    },
+    include: {
+      user: true
+    }
+  });
+  if (!sessionExists) {
+    throw new AppError_default(status13.UNAUTHORIZED, "Session has expired or is invalid");
+  }
+  const user = sessionExists.user;
+  if (user.role === Role.CUSTOMER) {
+    const customer = await prisma.customer.findUnique({
+      where: { userId: user.id }
+    });
+    if (!customer) {
+      await prisma.customer.create({
+        data: {
+          userId: user.id,
+          name: user.name || user.email.split("@")[0] || "",
+          email: user.email
+        }
+      });
+    }
+  } else if (user.role === Role.SELLER) {
+    const seller = await prisma.seller.findUnique({
+      where: { userId: user.id }
+    });
+    if (!seller) {
+      await prisma.seller.create({
+        data: {
+          userId: user.id,
+          name: user.name || user.email.split("@")[0] || "",
+          email: user.email
+        }
+      });
+    }
+  } else if (user.role === Role.ADMIN) {
+    const admin = await prisma.admin.findUnique({
+      where: { userId: user.id }
+    });
+    if (!admin) {
+      await prisma.admin.create({
+        data: {
+          userId: user.id,
+          name: user.name || user.email.split("@")[0] || "",
+          email: user.email
+        }
+      });
+    }
+  }
+  const accessToken = tokenUtils.getAccessToken({
+    userId: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    userStatus: user.userStatus,
+    emailVerified: user.emailVerified,
+    isDeleted: user.isDeleted,
+    needPasswordChange: user.needPasswordChange
+  });
+  const refreshToken = tokenUtils.getAccessToken({
+    userId: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    userStatus: user.userStatus,
+    emailVerified: user.emailVerified,
+    isDeleted: user.isDeleted,
+    needPasswordChange: user.needPasswordChange
+  });
+  return {
+    accessToken,
+    refreshToken,
+    token: sessionToken,
+    user
+  };
+};
 var AuthService = {
   registerCustomer,
   loginUser,
   changePassword,
   logoutUser,
-  verifyEmail
+  verifyEmail,
+  sessionToToken
 };
 
 // src/module/auth/auth.controller.ts
@@ -2341,6 +2468,9 @@ var registerCustomer2 = catchAsync(
     };
     const result = await AuthService.registerCustomer(payload);
     const { accessToken, refreshToken, token, ...rest } = result;
+    tokenUtils.setAccessTokenCookie(res, accessToken);
+    tokenUtils.setRefreshTokenCookie(res, refreshToken);
+    tokenUtils.setBetterAuthSessionCookie(res, token);
     sendResponse(res, {
       httpStatusCode: 201,
       success: true,
@@ -2378,7 +2508,7 @@ var loginUser2 = catchAsync(
 var changePassword2 = catchAsync(
   async (req, res) => {
     const payload = req.body;
-    const sessionToken = req.cookies["better-auth.session_token"];
+    const sessionToken = req.cookies["better-auth.session_token"] || req.cookies["__Secure-better-auth.session_token"];
     const result = await AuthService.changePassword(payload, sessionToken);
     const { accessToken, refreshToken, token } = result;
     tokenUtils.setAccessTokenCookie(res, accessToken);
@@ -2394,7 +2524,7 @@ var changePassword2 = catchAsync(
 );
 var logoutUser2 = catchAsync(
   async (req, res) => {
-    const sessionToken = req.cookies["better-auth.session_token"];
+    const sessionToken = req.cookies["better-auth.session_token"] || req.cookies["__Secure-better-auth.session_token"];
     const result = await AuthService.logoutUser(sessionToken);
     sendResponse(res, {
       httpStatusCode: status14.OK,
@@ -2415,12 +2545,33 @@ var verifyEmail2 = catchAsync(
     });
   }
 );
+var sessionToToken2 = catchAsync(
+  async (req, res) => {
+    const sessionToken = req.cookies["better-auth.session_token"] || req.cookies["__Secure-better-auth.session_token"] || req.headers["x-session-token"];
+    const result = await AuthService.sessionToToken(sessionToken);
+    const { accessToken, refreshToken, token, user } = result;
+    tokenUtils.setAccessTokenCookie(res, accessToken);
+    tokenUtils.setRefreshTokenCookie(res, refreshToken);
+    sendResponse(res, {
+      httpStatusCode: 200,
+      success: true,
+      message: "Session token exchanged successfully",
+      data: {
+        accessToken,
+        refreshToken,
+        token,
+        user
+      }
+    });
+  }
+);
 var AuthController = {
   registerCustomer: registerCustomer2,
   loginUser: loginUser2,
   changePassword: changePassword2,
   logoutUser: logoutUser2,
-  verifyEmail: verifyEmail2
+  verifyEmail: verifyEmail2,
+  sessionToToken: sessionToToken2
 };
 
 // src/module/auth/auth.validation.ts
@@ -2443,6 +2594,7 @@ router7.post("/login", AuthController.loginUser);
 router7.post("/change-password", auth(Role.ADMIN, Role.CUSTOMER, Role.SELLER), AuthController.changePassword);
 router7.post("/logout", auth(Role.ADMIN, Role.CUSTOMER, Role.SELLER), AuthController.logoutUser);
 router7.post("/verify-email", AuthController.verifyEmail);
+router7.post("/session-to-token", AuthController.sessionToToken);
 var AuthRoutes = router7;
 
 // src/app.ts

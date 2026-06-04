@@ -68,24 +68,15 @@ const registerCustomer = async (payload : IRegisterCustomerPayload) => {
                   }
               });
 
-    // try {
-    //     const customer = await prisma.$transaction( async(tx) => {
-            
-              
-    //         return customerTx;
-    //     });
-    // }catch (error) {
-    //   console.log("Transaction Error : ", error);
-    //   await prisma.user.delete({
-    //     where : {
-    //       id : data.user.id
-    //     }
-    //   });
-    //   throw error;
-    // }
+  const signInData = await auth.api.signInEmail({
+    body : {
+      email,
+      password
+    }
+  });
 
   return {
-    ...data,
+    ...signInData,
     accessToken,
     refreshToken
   }
@@ -241,10 +232,108 @@ const verifyEmail = async (email : string, otp: string) => {
 
 }
 
+const sessionToToken = async (sessionToken: string | undefined) => {
+  if (!sessionToken) {
+    throw new AppError(status.UNAUTHORIZED, "Session token is missing");
+  }
+
+  const parsedSessionToken = sessionToken.split(".")[0] ?? "";
+
+  const sessionExists = await prisma.session.findFirst({
+    where: {
+      token: parsedSessionToken,
+      expiresAt: {
+        gt: new Date(),
+      }
+    },
+    include: {
+      user: true,
+    }
+  });
+
+  if (!sessionExists) {
+    throw new AppError(status.UNAUTHORIZED, "Session has expired or is invalid");
+  }
+
+  const user = sessionExists.user;
+
+  // Ensure Customer/Seller/Admin profile exists
+  if (user.role === Role.CUSTOMER) {
+    const customer = await prisma.customer.findUnique({
+      where: { userId: user.id }
+    });
+    if (!customer) {
+      await prisma.customer.create({
+        data: {
+          userId: user.id,
+          name: user.name || user.email.split('@')[0] || "",
+          email: user.email,
+        }
+      });
+    }
+  } else if (user.role === Role.SELLER) {
+    const seller = await prisma.seller.findUnique({
+      where: { userId: user.id }
+    });
+    if (!seller) {
+      await prisma.seller.create({
+        data: {
+          userId: user.id,
+          name: user.name || user.email.split('@')[0] || "",
+          email: user.email,
+        }
+      });
+    }
+  } else if (user.role === Role.ADMIN) {
+    const admin = await prisma.admin.findUnique({
+      where: { userId: user.id }
+    });
+    if (!admin) {
+      await prisma.admin.create({
+        data: {
+          userId: user.id,
+          name: user.name || user.email.split('@')[0] || "",
+          email: user.email,
+        }
+      });
+    }
+  }
+
+  const accessToken = tokenUtils.getAccessToken({
+    userId: user.id,
+    name : user.name,
+    email : user.email,
+    role : user.role,
+    userStatus : user.userStatus,
+    emailVerified : user.emailVerified,
+    isDeleted : user.isDeleted,
+    needPasswordChange : user.needPasswordChange
+  });
+
+  const refreshToken = tokenUtils.getAccessToken({
+    userId: user.id,
+    name : user.name,
+    email : user.email,
+    role : user.role,
+    userStatus : user.userStatus,
+    emailVerified : user.emailVerified,
+    isDeleted : user.isDeleted,
+    needPasswordChange : user.needPasswordChange
+  });
+
+  return {
+    accessToken,
+    refreshToken,
+    token: sessionToken,
+    user
+  };
+};
+
 export const AuthService = {
   registerCustomer,
   loginUser,
   changePassword,
   logoutUser,
-  verifyEmail
+  verifyEmail,
+  sessionToToken
 }

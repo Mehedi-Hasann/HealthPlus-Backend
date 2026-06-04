@@ -18,6 +18,10 @@ const registerCustomer = catchAsync(
 
     const {accessToken, refreshToken, token, ...rest} = result;
 
+    tokenUtils.setAccessTokenCookie(res, accessToken);
+    tokenUtils.setRefreshTokenCookie(res, refreshToken);
+    tokenUtils.setBetterAuthSessionCookie(res, token);
+
     sendResponse(res, {
       httpStatusCode : 201,
       success : true,
@@ -63,7 +67,7 @@ const loginUser = catchAsync(
 const changePassword = catchAsync(
   async (req: Request, res: Response) => {
     const payload = req.body;
-    const sessionToken = req.cookies['better-auth.session_token'];
+    const sessionToken = req.cookies['better-auth.session_token'] || req.cookies['__Secure-better-auth.session_token'];
     // console.log(sessionToken);
 
     const result =await AuthService.changePassword(payload, sessionToken);
@@ -87,7 +91,7 @@ const changePassword = catchAsync(
 
 const logoutUser = catchAsync(
   async (req: Request, res: Response) => {
-    const sessionToken = req.cookies['better-auth.session_token'];
+    const sessionToken = req.cookies['better-auth.session_token'] || req.cookies['__Secure-better-auth.session_token'];
 
     const result = await AuthService.logoutUser(sessionToken);
 
@@ -114,6 +118,31 @@ const verifyEmail = catchAsync(
   }
 )
 
+const sessionToToken = catchAsync(
+  async (req: Request, res: Response) => {
+    const sessionToken = req.cookies['better-auth.session_token'] || req.cookies['__Secure-better-auth.session_token'] || req.headers['x-session-token'];
+
+    const result = await AuthService.sessionToToken(sessionToken as string | undefined);
+
+    const { accessToken, refreshToken, token, user } = result;
+
+    tokenUtils.setAccessTokenCookie(res, accessToken);
+    tokenUtils.setRefreshTokenCookie(res, refreshToken);
+
+    sendResponse(res, {
+      httpStatusCode : 200,
+      success : true,
+      message : "Session token exchanged successfully",
+      data : {
+        accessToken,
+        refreshToken,
+        token,
+        user
+      }
+    })
+  }
+)
+
 export const AuthController = {
-  registerCustomer,loginUser,changePassword,logoutUser, verifyEmail
+  registerCustomer,loginUser,changePassword,logoutUser, verifyEmail, sessionToToken
 }
